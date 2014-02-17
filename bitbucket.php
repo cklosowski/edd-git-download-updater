@@ -146,11 +146,11 @@ class EDD_BB_Download_Updater {
             foreach( $files as $key => $file ) {
                 if ( isset ( $file['bb_url'] ) and ! empty( $file['bb_url'] ) ) {
                     //var_dump( get_post_meta( $this->download_id, 'edd_bb_ninja-forms-conditionals_version_1.2.2', true ) );
-                    if ( empty( get_post_meta( $this->download_id, 'edd_bb_' . $file['name'] . '_version_' . $this->version, true ) ) ) {
+                    //if ( empty( get_post_meta( $this->download_id, 'edd_bb_' . $file['name'] . '_version_' . $this->version, true ) ) ) {
                         $this->file_key = $key;
                         $this->update_download( $file );
                         update_post_meta( $this->download_id, 'edd_bb_' . $file['name'] . '_version_' . $this->version, 1 );
-                    }
+                    //}
                 }
             }
         }
