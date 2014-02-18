@@ -1,6 +1,6 @@
 <?php
 /*
-Plugin Name: EDD - Git Update Downloads
+Plugin Name: Easy Digital Downloads - Git Update Downloads
 Plugin URI: http://ninjaforms.com
 Description: Update Download files and readme.txt directly from BitBucket or GitHub
 Version: 1.0
@@ -368,7 +368,12 @@ class EDD_GIT_Download_Updater {
      * @return void
      */
     private function set_foldername( $file ) {
-        $this->folder_name = $file['name'];
+        if ( !empty ( $file['name'] ) ) {
+            $this->folder_name = $file['name']; 
+        } else {
+            $this->folder_name = sanitize_title( $this->git_repo );
+        }
+        
     }
 
     /*
@@ -614,7 +619,7 @@ class EDD_GIT_Download_Updater {
     public function edd_metabox_th( $post_id ) {
         ?>
         <th class="" width="10%" ><?php _e( 'git URL', 'edd-git' );?></th>
-        <th class="" width="5%"><?php _e( 'Version', 'edd-git' );?></th>
+        <th class="" width="5%"><?php _e( 'git Version', 'edd-git' );?></th>
         <?php
     }
 
@@ -640,6 +645,12 @@ class EDD_GIT_Download_Updater {
             $git_version = '';
         }
 
+        $version_placeholder = '1.0';
+        // If Software Licensing is enabled, change our $version_placeholder to say "Optional"
+        if ( function_exists( 'edd_sl_textdomain' ) ) {
+            $version_placeholder = __( 'Optional', 'edd-git' );
+        }
+
         ?>
         <td>
             <input type="text" placeholder="<?php _e( 'git URL', 'edd-git' );?>" name="edd_download_files[<?php echo $key; ?>][git_url]" value="<?php echo $git_url;?>">
@@ -651,7 +662,7 @@ class EDD_GIT_Download_Updater {
             ?>
         </td>
         <td width="5%">
-            <input type="text" placeholder="1.0" name="edd_download_files[<?php echo $key; ?>][git_version]" value="<?php echo $git_version;?>">
+            <input type="text" placeholder="<?php echo $version_placeholder;?>" name="edd_download_files[<?php echo $key; ?>][git_version]" value="<?php echo $git_version;?>">
             <br />
             <?php
             if ( isset ( $this->errors[$key] ) and $this->errors[$key]['error'] == 404 ) {
