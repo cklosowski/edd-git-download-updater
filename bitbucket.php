@@ -1,37 +1,37 @@
 <?php
 /*
-Plugin Name: EDD - BitBucket Update Downloads
+Plugin Name: EDD - Git Update Downloads
 Plugin URI: http://ninjaforms.com
-Description: Update Download files and readme.txt directly from BitBucket
+Description: Update Download files and readme.txt directly from BitBucket or GitHub
 Version: 1.0
 Author: The WP Ninjas
 Author URI: http://wpninjas.com
 */
 
-if ( ! defined( 'EDD_BB_PLUGIN_DIR' ) ) {
-    define( 'EDD_BB_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+if ( ! defined( 'EDD_GIT_PLUGIN_DIR' ) ) {
+    define( 'EDD_GIT_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 }
 
-if ( ! defined( 'EDD_BB_PLUGIN_URL' ) ) {
-    define( 'EDD_BB_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+if ( ! defined( 'EDD_GIT_PLUGIN_URL' ) ) {
+    define( 'EDD_GIT_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 }
 
-class EDD_BB_Download_Updater {
+class EDD_GIT_Download_Updater {
 
     /*
-     * Store our BitBucket Username. This will be used to login to the desired repo.
+     * Store our git Username. This will be used to login to the desired repo.
      */
     private $username;
 
     /*
-     * Store our BitBucket Password. This wil be used to login to the desired repo.
+     * Store our git Password. This wil be used to login to the desired repo.
      */
     private $password;
 
     /*
-     * Store our BitBucket repo name
+     * Store our git repo name
      */
-    private $bb_repo;
+    private $git_repo;
 
     /*
      * Store our desired version #.
@@ -44,7 +44,7 @@ class EDD_BB_Download_Updater {
     private $sl_version;
 
     /*
-     * Store our BitBucket Repo URL
+     * Store our git Repo URL
      */
     private $url;
 
@@ -84,6 +84,16 @@ class EDD_BB_Download_Updater {
     private $errors;
 
     /*
+     * Store our folder name
+     */
+    private $folder_name;
+
+    /*
+     * Store our source (either bitbucket or github)
+     */
+    private $source;
+
+    /*
      * Get things up and running.
      *
      * @since 1.0
@@ -99,8 +109,9 @@ class EDD_BB_Download_Updater {
         add_filter( 'edd_settings_misc', array( $this, 'edd_misc_settings' ) );
 
         // Add our settings to the download editor.
+        add_action( 'edd_meta_box_files_fields', array( $this, 'edd_metabox_settings' ) , 10 );
         add_action( 'edd_download_file_table_head', array( $this, 'edd_metabox_th' ), 11 );
-        add_action( 'edd_download_file_table_row', array( $this, 'edd_metabox_settings' ), 11, 3 );
+        add_action( 'edd_download_file_table_row', array( $this, 'edd_metabox_td' ), 11, 3 );
 
         // Do something when a post is saved
         add_action( 'save_post', array( $this, 'save_post' ), 999 );
@@ -115,7 +126,7 @@ class EDD_BB_Download_Updater {
      */
 
     private function includes() {
-        require_once( EDD_BB_PLUGIN_DIR . 'includes/flx-zip-archive.php' );
+        require_once( EDD_GIT_PLUGIN_DIR . 'includes/flx-zip-archive.php' );
     }
 
     /*
@@ -140,22 +151,25 @@ class EDD_BB_Download_Updater {
 
         // OK, we're authenticated: we need to find and save the data
         $this->download_id = $post_id;
-        
+        if ( isset ( $_POST['edd_git_username'] ) ) {
+            update_post_meta( $this->download_id, 'edd_git_username', $_POST['edd_git_username'] );
+        }        
+        if ( isset ( $_POST['edd_git_password'] ) ) {
+            update_post_meta( $this->download_id, 'edd_git_password', $_POST['edd_git_password'] );
+        }
+
         $files = get_post_meta( $this->download_id, 'edd_download_files', true );
         if ( is_array( $files ) ) {
             foreach( $files as $key => $file ) {
-                if ( isset ( $file['bb_url'] ) and ! empty( $file['bb_url'] ) ) {
-                    //var_dump( get_post_meta( $this->download_id, 'edd_bb_ninja-forms-conditionals_version_1.2.2', true ) );
-                    //if ( empty( get_post_meta( $this->download_id, 'edd_bb_' . $file['name'] . '_version_' . $this->version, true ) ) ) {
-                        $this->file_key = $key;
-                        $this->update_download( $file );
-                        update_post_meta( $this->download_id, 'edd_bb_' . $file['name'] . '_version_' . $this->version, 1 );
-                    //}
+                if ( isset ( $file['git_url'] ) and ! empty( $file['git_url'] ) ) {
+                    $this->file_key = $key;
+                    $this->update_download( $file );
                 }
             }
         }
         
-        update_post_meta( $this->download_id, 'edd_bb_errors', $this->errors );
+        update_post_meta( $this->download_id, 'edd_git_errors', $this->errors );
+
     }
 
     /*
@@ -171,10 +185,11 @@ class EDD_BB_Download_Updater {
         $this->includes();
         $this->set_version( $file );
         $this->set_url( $file );
-        $this->set_filename();
+        $this->set_credentials();        
+        $this->set_foldername( $file );
         $this->set_tmp_dir();
         $this->set_edd_dir();
-        $this->set_credentials( $file );
+        $this->set_filename();
 
         // Grab our zip file.
         $zip_path = $this->fetch_zip();
@@ -216,7 +231,7 @@ class EDD_BB_Download_Updater {
     private function update_changelog( $new_dir ) {
         if ( file_exists( trailingslashit( $new_dir ) . 'readme.txt' ) ) {
             if( ! class_exists( 'Automattic_Readme' ) ) {
-                include_once( EDD_BB_PLUGIN_DIR . 'includes/parse-readme.php' );
+                include_once( EDD_GIT_PLUGIN_DIR . 'includes/parse-readme.php' );
             }
 
             $Parser = new Automattic_Readme;
@@ -239,13 +254,7 @@ class EDD_BB_Download_Updater {
 
     private function update_files( $new_zip ) {
         $files = get_post_meta( $this->download_id, 'edd_download_files', true );
-        if ( is_array( $files ) ) {
-            for ( $i = 0; $i < count( $files ); $i++ ) { 
-                if ( $files[$i]['name'] == $this->bb_repo ) {
-                    $files[$i]['file'] = $new_zip;
-                }
-            }
-        }
+       $files[$this->file_key]['file'] = $new_zip;
         update_post_meta( $this->download_id, 'edd_download_files', $files );
     }
 
@@ -260,8 +269,8 @@ class EDD_BB_Download_Updater {
 
         $edd_dir = trailingslashit( $this->edd_dir['path'] );
         $edd_url = trailingslashit( $this->edd_dir['url'] );
-        $upload_path = apply_filters( 'edd_bb_upload_path', $edd_dir . $this->filename );
-        $upload_url = apply_filters( 'edd_bb_upload_url', $edd_url . $this->filename );
+        $upload_path = apply_filters( 'edd_git_upload_path', $edd_dir . $this->filename );
+        $upload_url = apply_filters( 'edd_git_upload_url', $edd_url . $this->filename );
 
         copy( $zip, $upload_path );
         unlink( $zip );
@@ -277,8 +286,8 @@ class EDD_BB_Download_Updater {
 
     private function set_tmp_dir() {
         $tmp_dir = wp_upload_dir();
-        $tmp_dir = trailingslashit( $tmp_dir['basedir'] ) . 'edd-bb-tmp/';
-        $tmp_dir = apply_filters( 'edd_bb_zip_path', $tmp_dir );        
+        $tmp_dir = trailingslashit( $tmp_dir['basedir'] ) . 'edd-git-tmp/';
+        $tmp_dir = apply_filters( 'edd_git_zip_path', $tmp_dir );        
         if ( ! is_dir( $tmp_dir ) )
             mkdir( $tmp_dir );
         // $tmp_dir will always have a trailing slash.
@@ -286,27 +295,43 @@ class EDD_BB_Download_Updater {
     }
 
     /*
-     * Set our BitBucket URL
+     * Set our git URL. Also sets whether we are working from GitHub or BitBucket.
      *
      * @since 1.0
      * @return void
      */
 
     private function set_url( $file ) {
-        if ( isset ( $file['bb_url'] ) and ! empty( $file['bb_url'] ) ) {
-            $this->url = $file['bb_url'];
+        if ( isset ( $file['git_url'] ) and ! empty( $file['git_url'] ) ) {
+            $this->url = $file['git_url'];
         } else {
             // Throw an error
+            $error = '404';
+            $msg = __( 'Repo not found. Please check your URL and version.', 'edd-git' );
+            $this->errors[$this->file_key] = array( 'error' => $error, 'msg' => $msg );
         }
 
         $url = trailingslashit( $this->url );
 
         $tmp = explode( '/', $url );
+        
+        if ( $tmp[2] == 'bitbucket.org' ) {
+            $url_part = 'get/' . 'v' . $this->version .'.zip';
+            $this->source = 'bitbucket';
+        } else if ( $tmp[2] == 'github.com' ) {
+            $url_part = 'archive/' . $this->version . '.zip';
+            $this->source = 'github';
+        } else {
+            // Throw an error
+            $error = '404';
+            $msg = __( 'Repo not found. Please check your URL and version.', 'edd-git' );
+            $this->errors[$this->file_key] = array( 'error' => $error, 'msg' => $msg );
+        }
 
-        $this->bb_repo = $tmp[4];
+        $this->git_repo = $tmp[4];
 
-        $url = trailingslashit( $this->url ) . 'get/' . 'v' . $this->version .'.zip';
-        $this->url = apply_filters( 'edd_bb_repo_url', $url );
+        $url = trailingslashit( $this->url ) . $url_part;
+        $this->url = apply_filters( 'edd_git_repo_url', $url );
     }
 
     /*
@@ -317,8 +342,8 @@ class EDD_BB_Download_Updater {
      */
 
     private function set_version( $file ) {
-        if ( isset ( $file['bb_version'] ) and ! empty( $file['bb_version'] ) ) {
-            $this->version = $file['bb_version'];
+        if ( isset ( $file['git_version'] ) and ! empty( $file['git_version'] ) ) {
+            $this->version = $file['git_version'];
         } else {
             $sl_version = get_post_meta( $this->download_id, '_edd_sl_version', true );
             $this->version = $sl_version;            
@@ -326,18 +351,28 @@ class EDD_BB_Download_Updater {
     }
 
     /*
-     * Get our clean zip file name
+     * Set our clean zip file name
      *
      * @since 1.0
      * @return void
      */
 
     private function set_filename() {
-        $this->filename = $this->bb_repo . '.' . $this->version . '.zip';
+        $this->filename = $this->git_repo . '.' . $this->version . '.zip';
     }
 
     /*
-     * Grab the zip file from BitBucket and store it in our temporary directory.
+     * Set the name of our folder that should go inside our new zip.
+     *
+     * @since 1.0
+     * @return void
+     */
+    private function set_foldername( $file ) {
+        $this->folder_name = $file['name'];
+    }
+
+    /*
+     * Grab the zip file from git and store it in our temporary directory.
      *
      * @since 1.0
      * @return string $zip_path
@@ -384,7 +419,7 @@ class EDD_BB_Download_Updater {
             if ($fp != null) fclose($fp);
         }
         if ( ! isset ( $status_code ) ) {
-            $this->errors[$this->file_key] = array( 'error' => '403', 'msg' => __( 'Cannot access repo. Please check your username and password.', 'edd-bb' ) );
+            $this->errors['credentials'] = array( 'error' => '403', 'msg' => __( 'Cannot access repo. Please check your username and password.', 'edd-git' ) );
             if ( file_exists( $zip_path ) )
                 unlink( $zip_path );
             return false;
@@ -392,15 +427,19 @@ class EDD_BB_Download_Updater {
             // Add an error
             if ( $status_code == 404 ) {
                 $error = '404';
-                $msg = __( 'Repo not found. Please check your URL and version.', 'edd-bb' );
+                $msg = __( 'Repo not found. Please check your URL and version.', 'edd-git' );
+                $this->errors[$this->file_key] = array( 'error' => $error, 'msg' => $msg );
             } else if ( $status_code == 403 ) {
                 $error = '403';
-                $msg = __( 'Cannot access repo. Please check your username and password.', 'edd-bb' );
+                $msg = __( 'Cannot access repo. Please check your username and password.', 'edd-git' );
+                $this->errors['credentials'] = array( 'error' => $error, 'msg' => $msg );
+                return false;
             } else {
-                $error = '0';
-                $msg = __( 'BitBucket Error. Check BitBucket settings and try again', 'edd-bb' );
+                $error = '403';
+                $msg = __( 'Cannot access repo. Please check your username and password.', 'edd-git' );
+                $this->errors['credentials'] = array( 'error' => $error, 'msg' => $msg );
             }
-            $this->errors[$this->file_key] = array( 'error' => $error, 'msg' => $msg );
+            
             if ( file_exists( $zip_path ) )
                 unlink( $zip_path );
             return false;
@@ -409,7 +448,7 @@ class EDD_BB_Download_Updater {
             if ($fp != null) fclose($fp); 
         }
 
-        do_action( 'edd_bb_zip_fetched', $zip_path, $this->bb_repo );
+        do_action( 'edd_git_zip_fetched', $zip_path, $this->git_repo );
 
         return $zip_path;
     }
@@ -424,8 +463,8 @@ class EDD_BB_Download_Updater {
 
     private function unzip( $zip_path ) {
 
-        if ( is_dir( trailingslashit( $this->tmp_dir . $this->bb_repo ) ) )
-            $this->remove_dir( trailingslashit( $this->tmp_dir . $this->bb_repo ) );
+        if ( is_dir( trailingslashit( $this->tmp_dir . $this->folder_name ) ) )
+            $this->remove_dir( trailingslashit( $this->tmp_dir . $this->folder_name ) );
 
         $zip = new ZipArchive;
         $zip->open( $zip_path );
@@ -433,10 +472,10 @@ class EDD_BB_Download_Updater {
         $zip->close();
         $this->set_sub_dir( $this->tmp_dir );
 
-        $new_dir = rename( $this->tmp_dir . $this->sub_dir, $this->tmp_dir . $this->bb_repo );
+        $new_dir = rename( $this->tmp_dir . $this->sub_dir, $this->tmp_dir . $this->folder_name );
         if ( ! $new_dir )
             return false;
-        $new_dir = $this->tmp_dir . $this->bb_repo;
+        $new_dir = $this->tmp_dir . $this->folder_name;
         $this->set_sub_dir( $this->tmp_dir );
         unlink( $this->tmp_dir . $this->filename );
 
@@ -507,12 +546,12 @@ class EDD_BB_Download_Updater {
         // Bail if we weren't sent a directory.
         if ( !is_dir( $tmp_dir ) )
             return $dir_array;
-            
+        
         if ( $dh = opendir( $tmp_dir ) ) {
             while ( ( $file = readdir( $dh ) ) !== false ) {
                 if ($file == '.' || $file == '..') continue;
-                if ( strpos( $file, $this->bb_repo ) ) {
-                   if ( is_dir ( $tmp_dir.'/'.$file ) ) {
+                if ( strpos( $file, $this->git_repo ) !== false ) {
+                    if ( is_dir ( $tmp_dir.'/'.$file ) ) {
                         $this->sub_dir = $file;
                         break;
                     } 
@@ -537,23 +576,31 @@ class EDD_BB_Download_Updater {
     }
 
     /*
-     * Set our BitBucket username and password
+     * Set our git username and password
      *
      * @since 1.0
      * @return void
      */
 
-    private function set_credentials( $file ) {
-        if ( isset ( $file['bb_username'] ) and ! empty( $file['bb_username'] ) ) {
-            $this->username = $file['bb_username'];
+    private function set_credentials() {
+        if ( $this->source == 'bitbucket' ) {
+            $plugin_username = edd_get_option( 'bb_username' );
+            $plugin_password = edd_get_option( 'bb_password' );
         } else {
-            $this->username = edd_get_option( 'bb_username' );
+            $plugin_username = edd_get_option( 'gh_username' );
+            $plugin_password = edd_get_option( 'gh_password' );
         }
 
-        if ( isset ( $file['bb_password'] ) and ! empty( $file['bb_password'] ) ) {
-            $this->password = $file['bb_password'];
+        if ( ! empty( get_post_meta( $this->download_id, 'edd_git_username', true ) ) ) {
+            $this->username = get_post_meta( $this->download_id, 'edd_git_username', true );
         } else {
-            $this->password = edd_get_option( 'bb_password' );
+            $this->username = $plugin_username;
+        }
+
+        if ( ! empty( get_post_meta( $this->download_id, 'edd_git_password', true ) ) ) {
+            $this->password = get_post_meta( $this->download_id, 'edd_git_password', true );
+        } else {
+            $this->password = $plugin_password;
         }
     }
 
@@ -565,14 +612,9 @@ class EDD_BB_Download_Updater {
      */
 
     public function edd_metabox_th( $post_id ) {
-        // Add our errors if they exist
-        $this->errors = get_post_meta( $post_id, 'edd_bb_errors', true );
-        delete_post_meta( $post_id, 'edd_bb_errors' );
         ?>
-        <th class="" width="10%" ><?php _e( 'BitBucket URL', 'edd-bb' );?></th>
-        <th class="" width="10%"><?php _e( 'BitBucket Username', 'edd-bb' );?></th>
-        <th class="" width="10%"><?php _e( 'BitBucket Password', 'edd-bb' );?></th>
-        <th class="" width="5%"><?php _e( 'Version', 'edd-bb' );?></th>
+        <th class="" width="10%" ><?php _e( 'git URL', 'edd-git' );?></th>
+        <th class="" width="5%"><?php _e( 'Version', 'edd-git' );?></th>
         <?php
     }
 
@@ -583,36 +625,24 @@ class EDD_BB_Download_Updater {
      * @return void
      */
 
-    public function edd_metabox_settings( $post_id, $key, $args ) {
+    public function edd_metabox_td( $post_id, $key, $args ) {
         $files = get_post_meta( $post_id, 'edd_download_files', true );
 
-        if ( isset ( $files[$key]['bb_url'] ) ) {
-            $bb_url = $files[$key]['bb_url'];
+        if ( isset ( $files[$key]['git_url'] ) ) {
+            $git_url = $files[$key]['git_url'];
         } else {
-            $bb_url = '';
+            $git_url = '';
         }        
 
-        if ( isset ( $files[$key]['bb_username'] ) ) {
-            $bb_username = $files[$key]['bb_username'];
+        if ( isset ( $files[$key]['git_version'] ) ) {
+            $git_version = $files[$key]['git_version'];
         } else {
-            $bb_username = '';
-        }
-
-        if ( isset ( $files[$key]['bb_password'] ) ) {
-            $bb_password = $files[$key]['bb_password'];
-        } else {
-            $bb_password = '';
-        }
-
-        if ( isset ( $files[$key]['bb_version'] ) ) {
-            $bb_version = $files[$key]['bb_version'];
-        } else {
-            $bb_version = '';
+            $git_version = '';
         }
 
         ?>
         <td>
-            <input type="text" placeholder="<?php _e( 'BitBucket URL', 'edd-bb' );?>" name="edd_download_files[<?php echo $key; ?>][bb_url]" value="<?php echo $bb_url;?>">
+            <input type="text" placeholder="<?php _e( 'git URL', 'edd-git' );?>" name="edd_download_files[<?php echo $key; ?>][git_url]" value="<?php echo $git_url;?>">
             <br />
             <?php
             if ( isset ( $this->errors[$key] ) and $this->errors[$key]['error'] == 404 ) {
@@ -620,26 +650,8 @@ class EDD_BB_Download_Updater {
             }
             ?>
         </td>
-        <td>
-            <input type="text" placeholder="<?php _e( 'Optional', 'edd-bb' );?>" name="edd_download_files[<?php echo $key; ?>][bb_username]" value="<?php echo $bb_username;?>">
-            <br />
-            <?php
-            if ( isset ( $this->errors[$key] ) and $this->errors[$key]['error'] == 403 ) {
-                echo '<div style="color: red">' . $this->errors[$key]['msg'] . '</div>';   
-            }
-            ?>
-        </td>
-        <td>
-            <input type="password" placeholder="<?php _e( 'Optional', 'edd-bb' );?>" name="edd_download_files[<?php echo $key; ?>][bb_password]" value="<?php echo $bb_password;?>">
-            <br />
-            <?php
-            if ( isset ( $this->errors[$key] ) and $this->errors[$key]['error'] == 403 ) {
-                echo '<div style="color: red">' . $this->errors[$key]['msg'] . '</div>';   
-            }
-            ?>
-        </td>        
         <td width="5%">
-            <input type="text" placeholder="1.0" name="edd_download_files[<?php echo $key; ?>][bb_version]" value="<?php echo $bb_version;?>">
+            <input type="text" placeholder="1.0" name="edd_download_files[<?php echo $key; ?>][git_version]" value="<?php echo $git_version;?>">
             <br />
             <?php
             if ( isset ( $this->errors[$key] ) and $this->errors[$key]['error'] == 404 ) {
@@ -651,7 +663,47 @@ class EDD_BB_Download_Updater {
     }
 
     /*
-     * Add our default BitBucket settings to the Misc. tab
+     * Add our username and password settings to the download metabox.
+     *
+     * @since 1.0
+     * return void
+     */
+
+    public function edd_metabox_settings( $post_id ) {
+        // Add our errors if they exist
+        $this->errors = get_post_meta( $post_id, 'edd_git_errors', true );
+        delete_post_meta( $post_id, 'edd_git_errors' );
+
+        $git_username = get_post_meta( $post_id, 'edd_git_username', true );
+        $git_password = get_post_meta( $post_id, 'edd_git_password', true );
+
+        ?>
+        <p>
+            <strong><?php _e( 'Git Repo Credentials:', 'edd-git' ); ?></strong>
+        </p>
+        <p>
+            <label>
+            <?php _e( 'Username', 'edd-git' ); ?>
+            <input type="text" placeholder="<?php _e( 'Optional', 'edd-git' );?>" name="edd_git_username" value="<?php echo $git_username;?>">
+            </label>
+        </p>
+        <p>
+            <label>
+            <?php _e( 'Password', 'edd-git' ); ?>
+            <input type="password" placeholder="<?php _e( 'Optional', 'edd-git' );?>" name="edd_git_password" value="<?php echo $git_password;?>">
+            </label>
+            <br />
+            <?php
+            if ( isset ( $this->errors['credentials'] ) and $this->errors['credentials']['error'] == 403 ) {
+                echo '<div style="color: red">' . $this->errors['credentials']['msg'] . '</div>';   
+            }
+            ?>
+        </p>
+        <?php
+    }
+
+    /*
+     * Add our default git settings to the Misc. tab
      *
      * @since 1.0
      * @return array $misc
@@ -660,28 +712,42 @@ class EDD_BB_Download_Updater {
     public function edd_misc_settings( $misc ) {
         $misc['bb_username'] = array(
             'id' => 'bb_username',
-            'name' => __( 'BitBucket Username', 'edd-bb' ),
-            'desc' => __( 'Default BitBucket Username.', 'edd-bb' ),
+            'name' => __( 'BitBucket Username', 'edd-git' ),
+            'desc' => __( 'Default BitBucket Username.', 'edd-git' ),
             'type' => 'text',
             'std' => ''
         );
         $misc['bb_password'] = array(
             'id' => 'bb_password',
-            'name' => __( 'BitBucket Password', 'edd-bb' ),
-            'desc' => __( 'Default BitBucket Password.', 'edd-bb' ),
+            'name' => __( 'BitBucket Password', 'edd-git' ),
+            'desc' => __( 'Default BitBucket Password.', 'edd-git' ),
+            'type' => 'password',
+            'std' => ''
+        );        
+        $misc['gh_username'] = array(
+            'id' => 'gh_username',
+            'name' => __( 'GitHub Username', 'edd-git' ),
+            'desc' => __( 'Default GitHub Username.', 'edd-git' ),
+            'type' => 'text',
+            'std' => ''
+        );
+        $misc['gh_password'] = array(
+            'id' => 'gh_password',
+            'name' => __( 'GitHub Password', 'edd-git' ),
+            'desc' => __( 'Default GitHub Password.', 'edd-git' ),
             'type' => 'password',
             'std' => ''
         );
         return $misc;
     }
 
-} // End EDD_BB_Download_Updater class
+} // End EDD_GIT_Download_Updater class
 
 // Get the download updater class started
-function edd_bb_download_updater() {
-    $EDD_BB_Download_Updater = new EDD_BB_Download_Updater();
+function edd_git_download_updater() {
+    $EDD_GIT_Download_Updater = new EDD_GIT_Download_Updater();
 }
 
 // Hook into the post save action
 
-add_action( 'admin_init', 'edd_bb_download_updater', 9 );
+add_action( 'admin_init', 'edd_git_download_updater', 9 );
