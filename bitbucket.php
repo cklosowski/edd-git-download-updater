@@ -138,7 +138,7 @@ class EDD_GIT_Download_Updater {
 
     public function save_post( $post_id ) {
         // Bail if we aren't saving a download
-        if ( $_POST['post_type'] != 'download' )
+        if ( !isset ( $_POST['post_type'] ) or $_POST['post_type'] != 'download' )
             return $post_id;
 
         // verify if this is an auto save routine.
@@ -192,7 +192,7 @@ class EDD_GIT_Download_Updater {
         $this->set_filename();
 
         // Grab our zip file.
-        $zip_path = $this->fetch_zip();
+        $zip_path = $this->fetch_zip( $file );
         if ( ! $zip_path )
             return false;
 
@@ -298,10 +298,12 @@ class EDD_GIT_Download_Updater {
      * Set our git URL. Also sets whether we are working from GitHub or BitBucket.
      *
      * @since 1.0
+     * @param array $file
+     * @param string $v
      * @return void
      */
 
-    private function set_url( $file ) {
+    private function set_url( $file, $v = 'v' ) {
         if ( isset ( $file['git_url'] ) and ! empty( $file['git_url'] ) ) {
             $this->url = $file['git_url'];
         } else {
@@ -316,10 +318,10 @@ class EDD_GIT_Download_Updater {
         $tmp = explode( '/', $url );
         
         if ( $tmp[2] == 'bitbucket.org' ) {
-            $url_part = 'get/' . 'v' . $this->version .'.zip';
+            $url_part = 'get/' . $v . $this->version .'.zip';
             $this->source = 'bitbucket';
         } else if ( $tmp[2] == 'github.com' ) {
-            $url_part = 'archive/' . $this->version . '.zip';
+            $url_part = 'archive/' . $v . $this->version . '.zip';
             $this->source = 'github';
         } else {
             // Throw an error
@@ -380,10 +382,12 @@ class EDD_GIT_Download_Updater {
      * Grab the zip file from git and store it in our temporary directory.
      *
      * @since 1.0
+     * @param array $file
+     * @param int $try
      * @return string $zip_path
      */
 
-    public function fetch_zip() {
+    public function fetch_zip( $file, $try = '' ) {
         $zip_path = $this->tmp_dir . $this->filename;
         $username = $this->username;
         $password = $this->password;
@@ -431,9 +435,15 @@ class EDD_GIT_Download_Updater {
         } else if ( $status_code != 200 ) {
             // Add an error
             if ( $status_code == 404 ) {
-                $error = '404';
-                $msg = __( 'Repo not found. Please check your URL and version.', 'edd-git' );
-                $this->errors[$this->file_key] = array( 'error' => $error, 'msg' => $msg );
+                if ( $try == 2 ) {
+                    $error = '404';
+                    $msg = __( 'Repo not found. Please check your URL and version.', 'edd-git' );
+                    $this->errors[$this->file_key] = array( 'error' => $error, 'msg' => $msg );
+                } else {
+                    $this->set_url( $file, '' );
+                    return $this->fetch_zip( $file, 2 );
+                }
+                
             } else if ( $status_code == 403 ) {
                 $error = '403';
                 $msg = __( 'Cannot access repo. Please check your username and password.', 'edd-git' );
@@ -596,14 +606,18 @@ class EDD_GIT_Download_Updater {
             $plugin_password = edd_get_option( 'gh_password' );
         }
 
-        if ( ! empty( get_post_meta( $this->download_id, 'edd_git_username', true ) ) ) {
-            $this->username = get_post_meta( $this->download_id, 'edd_git_username', true );
+        $edd_git_username = get_post_meta( $this->download_id, 'edd_git_username', true );
+
+        if ( ! empty( $edd_git_username ) ) {
+            $this->username = $edd_git_username;
         } else {
             $this->username = $plugin_username;
         }
 
-        if ( ! empty( get_post_meta( $this->download_id, 'edd_git_password', true ) ) ) {
-            $this->password = get_post_meta( $this->download_id, 'edd_git_password', true );
+        $edd_git_password = get_post_meta( $this->download_id, 'edd_git_password', true );
+
+        if ( ! empty( $edd_git_password ) ) {
+            $this->password = $edd_git_password;
         } else {
             $this->password = $plugin_password;
         }
