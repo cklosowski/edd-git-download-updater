@@ -639,7 +639,7 @@ class EDD_GIT_Download_Updater {
         ?>
         <th class="" width="10%" ><?php _e( 'git URL', 'edd-git' );?></th>
         <th class="" width="5%"><?php _e( 'git Version', 'edd-git' );?></th>
-        <th class="" width="5%"><?php _e( 'Zip Folder Name', 'edd-git' );?></th>
+        <th class="" width="5%"><?php _e( 'Folder Name Inside Zip', 'edd-git' );?></th>
         <?php
     }
 
@@ -688,7 +688,7 @@ class EDD_GIT_Download_Updater {
             ?>
         </td>
         <td width="5%">
-            <input class="small-text" type="text" placeholder="<?php echo $version_placeholder;?>" name="edd_download_files[<?php echo $key; ?>][git_version]" value="<?php echo $git_version;?>" style="padding: 3px 6px;">
+            <input type="text" placeholder="<?php echo $version_placeholder;?>" name="edd_download_files[<?php echo $key; ?>][git_version]" value="<?php echo $git_version;?>" style="width: 70px; padding: 3px 6px;">
             <br />
             <?php
             if ( isset ( $this->errors[$key] ) and $this->errors[$key]['error'] == 404 ) {
