@@ -2,7 +2,7 @@
 /*
 Plugin Name: Easy Digital Downloads - Git Update Downloads
 Plugin URI: http://ninjaforms.com
-Description: Update Download files and readme.txt directly from BitBucket or GitHub
+Description: Update Download files and changelog directly from BitBucket or GitHub
 Version: 1.0
 Author: The WP Ninjas
 Author URI: http://wpninjas.com
@@ -51,7 +51,7 @@ class EDD_GIT_Download_Updater {
     /*
      * Store our destination filename
      */
-    private $filename;
+    private $filename;    
 
     /*
      * Store our temporary dir name
@@ -189,7 +189,7 @@ class EDD_GIT_Download_Updater {
         $this->set_foldername( $file );
         $this->set_tmp_dir();
         $this->set_edd_dir();
-        $this->set_filename();
+        $this->set_filename( $file );
 
         // Grab our zip file.
         $zip_path = $this->fetch_zip( $file );
@@ -359,8 +359,13 @@ class EDD_GIT_Download_Updater {
      * @return void
      */
 
-    private function set_filename() {
-        $this->filename = $this->git_repo . '.' . $this->version . '.zip';
+    private function set_filename( $file ) {
+        if ( isset ( $file['name'] ) and ! empty( $file['name'] ) ) {
+            $this->filename = $file['name'] . '.zip';
+        } else {
+           $this->filename = $this->git_repo . '.' . $this->version . '.zip'; 
+        }
+        
     }
 
     /*
@@ -370,8 +375,8 @@ class EDD_GIT_Download_Updater {
      * @return void
      */
     private function set_foldername( $file ) {
-        if ( !empty ( $file['name'] ) ) {
-            $this->folder_name = $file['name']; 
+        if ( !empty ( $file['zip_foldername'] ) ) {
+            $this->folder_name = $file['zip_foldername']; 
         } else {
             $this->folder_name = sanitize_title( $this->git_repo );
         }
@@ -634,6 +639,7 @@ class EDD_GIT_Download_Updater {
         ?>
         <th class="" width="10%" ><?php _e( 'git URL', 'edd-git' );?></th>
         <th class="" width="5%"><?php _e( 'git Version', 'edd-git' );?></th>
+        <th class="" width="5%"><?php _e( 'Zip Foldername', 'edd-git' );?></th>
         <?php
     }
 
@@ -657,6 +663,12 @@ class EDD_GIT_Download_Updater {
             $git_version = $files[$key]['git_version'];
         } else {
             $git_version = '';
+        }
+
+        if ( isset ( $files[$key]['zip_foldername'] ) ) {
+            $zip_foldername = $files[$key]['zip_foldername'];
+        } else {
+            $zip_foldername = '';
         }
 
         $version_placeholder = '1.0';
@@ -683,6 +695,9 @@ class EDD_GIT_Download_Updater {
                 echo '<div style="color: red">' . $this->errors[$key]['msg'] . '</div>';   
             }
             ?>
+        </td>        
+        <td width="5%">
+            <input type="text" placeholder="<?php _e( 'Default: Repo Name' ); ?>" name="edd_download_files[<?php echo $key; ?>][zip_foldername]" value="<?php echo $zip_foldername;?>">
         </td>
     <?php
     }
