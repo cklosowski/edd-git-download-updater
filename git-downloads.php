@@ -363,7 +363,7 @@ class EDD_GIT_Download_Updater {
         if ( isset ( $file['name'] ) and ! empty( $file['name'] ) ) {
             $this->filename = $file['name'] . '.zip';
         } else {
-           $this->filename = $this->git_repo . '.' . $this->version . '.zip'; 
+            $this->filename = $this->git_repo . '.' . $this->version . '.zip'; 
         }
         
     }
