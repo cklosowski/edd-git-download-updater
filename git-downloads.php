@@ -36,7 +36,7 @@ class EDD_GIT_Download_Updater {
     /*
      * Store our desired version #.
      */
-    private $version; 
+    private $version;
 
     /*
      * Store our download's "version" number if Licensing is installed
@@ -51,7 +51,7 @@ class EDD_GIT_Download_Updater {
     /*
      * Store our destination filename
      */
-    private $filename;    
+    private $filename;
 
     /*
      * Store our temporary dir name
@@ -115,7 +115,7 @@ class EDD_GIT_Download_Updater {
 
         // Do something when a post is saved
         add_action( 'save_post', array( $this, 'save_post' ), 999 );
-        
+
     }
 
     /*
@@ -153,7 +153,7 @@ class EDD_GIT_Download_Updater {
         $this->download_id = $post_id;
         if ( isset ( $_POST['edd_git_username'] ) ) {
             update_post_meta( $this->download_id, 'edd_git_username', $_POST['edd_git_username'] );
-        }        
+        }
         if ( isset ( $_POST['edd_git_password'] ) ) {
             update_post_meta( $this->download_id, 'edd_git_password', $_POST['edd_git_password'] );
         }
@@ -167,7 +167,7 @@ class EDD_GIT_Download_Updater {
                 }
             }
         }
-        
+
         update_post_meta( $this->download_id, 'edd_git_errors', $this->errors );
 
     }
@@ -185,7 +185,7 @@ class EDD_GIT_Download_Updater {
         $this->includes();
         $this->set_version( $file );
         $this->set_url( $file );
-        $this->set_credentials();        
+        $this->set_credentials();
         $this->set_foldername( $file );
         $this->set_tmp_dir();
         $this->set_edd_dir();
@@ -201,7 +201,7 @@ class EDD_GIT_Download_Updater {
 
         // Update our changelog with the readme in the new directory but only if we are dealing with one file.
         if ( count( get_post_meta( $this->download_id, 'edd_download_files', true ) ) == 1 ) {
-            $this->update_changelog( $new_dir );            
+            $this->update_changelog( $new_dir );
         }
 
         // Create our new zip file
@@ -287,7 +287,7 @@ class EDD_GIT_Download_Updater {
     private function set_tmp_dir() {
         $tmp_dir = wp_upload_dir();
         $tmp_dir = trailingslashit( $tmp_dir['basedir'] ) . 'edd-git-tmp/';
-        $tmp_dir = apply_filters( 'edd_git_zip_path', $tmp_dir );        
+        $tmp_dir = apply_filters( 'edd_git_zip_path', $tmp_dir );
         if ( ! is_dir( $tmp_dir ) )
             mkdir( $tmp_dir );
         // $tmp_dir will always have a trailing slash.
@@ -316,7 +316,7 @@ class EDD_GIT_Download_Updater {
         $url = trailingslashit( $this->url );
 
         $tmp = explode( '/', $url );
-        
+
         if ( $tmp[2] == 'bitbucket.org' ) {
             $url_part = 'get/' . $v . $this->version .'.zip';
             $this->source = 'bitbucket';
@@ -348,7 +348,7 @@ class EDD_GIT_Download_Updater {
             $this->version = $file['git_version'];
         } else {
             $sl_version = get_post_meta( $this->download_id, '_edd_sl_version', true );
-            $this->version = $sl_version;            
+            $this->version = $sl_version;
         }
     }
 
@@ -363,9 +363,9 @@ class EDD_GIT_Download_Updater {
         if ( isset ( $file['name'] ) and ! empty( $file['name'] ) ) {
             $this->filename = $file['name'] . '.zip';
         } else {
-            $this->filename = $this->git_repo . '.' . $this->version . '.zip'; 
+            $this->filename = $this->git_repo . '.' . $this->version . '.zip';
         }
-        
+
     }
 
     /*
@@ -376,11 +376,11 @@ class EDD_GIT_Download_Updater {
      */
     private function set_foldername( $file ) {
         if ( !empty ( $file['zip_foldername'] ) ) {
-            $this->folder_name = $file['zip_foldername']; 
+            $this->folder_name = $file['zip_foldername'];
         } else {
             $this->folder_name = sanitize_title( $this->git_repo );
         }
-        
+
     }
 
     /*
@@ -448,7 +448,7 @@ class EDD_GIT_Download_Updater {
                     $this->set_url( $file, '' );
                     return $this->fetch_zip( $file, 2 );
                 }
-                
+
             } else if ( $status_code == 403 ) {
                 $error = '403';
                 $msg = __( 'Cannot access repo. Please check your username and password.', 'edd-git' );
@@ -459,13 +459,13 @@ class EDD_GIT_Download_Updater {
                 $msg = __( 'Cannot access repo. Please check your username and password.', 'edd-git' );
                 $this->errors['credentials'] = array( 'error' => $error, 'msg' => $msg );
             }
-            
+
             if ( file_exists( $zip_path ) )
                 unlink( $zip_path );
             return false;
         } else {
             if ($ch != null) curl_close($ch);
-            if ($fp != null) fclose($fp); 
+            if ($fp != null) fclose($fp);
         }
 
         do_action( 'edd_git_zip_fetched', $zip_path, $this->git_repo );
@@ -513,14 +513,14 @@ class EDD_GIT_Download_Updater {
     private function zip( $dir, $destination ) {
 
         //Don't forget to remove the trailing slash
- 
+
         $the_folder = $dir;
         $zip_file_name = $destination;
-         
+
         $za = new FlxZipArchive;
-         
+
         $res = $za->open($zip_file_name, ZipArchive::CREATE);
-         
+
         if($res === TRUE) {
             $za->addDir($the_folder, basename($the_folder));
             $za->close();
@@ -530,7 +530,7 @@ class EDD_GIT_Download_Updater {
 
         return $destination;
     }
-    
+
     /*
      * Delete tmp directory and all contents
      *
@@ -545,7 +545,7 @@ class EDD_GIT_Download_Updater {
                 continue;
             $dir = trailingslashit( $dir );
             if ( is_dir( $dir . $file ) ) {
-               $this->remove_dir( $dir . $file ); 
+               $this->remove_dir( $dir . $file );
             } else {
                 unlink( $dir . $file );
             }
@@ -566,7 +566,7 @@ class EDD_GIT_Download_Updater {
         // Bail if we weren't sent a directory.
         if ( !is_dir( $tmp_dir ) )
             return $dir_array;
-        
+
         if ( $dh = opendir( $tmp_dir ) ) {
             while ( ( $file = readdir( $dh ) ) !== false ) {
                 if ($file == '.' || $file == '..') continue;
@@ -574,7 +574,7 @@ class EDD_GIT_Download_Updater {
                     if ( is_dir ( $tmp_dir.'/'.$file ) ) {
                         $this->sub_dir = $file;
                         break;
-                    } 
+                    }
                 }
             }
             closedir($dh);
@@ -657,7 +657,7 @@ class EDD_GIT_Download_Updater {
             $git_url = $files[$key]['git_url'];
         } else {
             $git_url = '';
-        }        
+        }
 
         if ( isset ( $files[$key]['git_version'] ) ) {
             $git_version = $files[$key]['git_version'];
@@ -683,19 +683,19 @@ class EDD_GIT_Download_Updater {
             <br />
             <?php
             if ( isset ( $this->errors[$key] ) and $this->errors[$key]['error'] == 404 ) {
-                echo '<div style="color: red">' . $this->errors[$key]['msg'] . '</div>';   
+                echo '<div style="color: red">' . $this->errors[$key]['msg'] . '</div>';
             }
             ?>
         </td>
         <td width="5%">
-            <input type="text" placeholder="<?php echo $version_placeholder;?>" name="edd_download_files[<?php echo $key; ?>][git_version]" value="<?php echo $git_version;?>">
+            <input class="small-text" type="text" placeholder="<?php echo $version_placeholder;?>" name="edd_download_files[<?php echo $key; ?>][git_version]" value="<?php echo $git_version;?>" style="padding: 3px 6px;">
             <br />
             <?php
             if ( isset ( $this->errors[$key] ) and $this->errors[$key]['error'] == 404 ) {
-                echo '<div style="color: red">' . $this->errors[$key]['msg'] . '</div>';   
+                echo '<div style="color: red">' . $this->errors[$key]['msg'] . '</div>';
             }
             ?>
-        </td>        
+        </td>
         <td width="5%">
             <input type="text" placeholder="<?php _e( 'Default: Repo Name' ); ?>" name="edd_download_files[<?php echo $key; ?>][zip_foldername]" value="<?php echo $zip_foldername;?>">
         </td>
@@ -735,7 +735,7 @@ class EDD_GIT_Download_Updater {
             <br />
             <?php
             if ( isset ( $this->errors['credentials'] ) and $this->errors['credentials']['error'] == 403 ) {
-                echo '<div style="color: red">' . $this->errors['credentials']['msg'] . '</div>';   
+                echo '<div style="color: red">' . $this->errors['credentials']['msg'] . '</div>';
             }
             ?>
         </p>
@@ -763,7 +763,7 @@ class EDD_GIT_Download_Updater {
             'desc' => __( 'Default BitBucket Password.', 'edd-git' ),
             'type' => 'password',
             'std' => ''
-        );        
+        );
         $misc['gh_username'] = array(
             'id' => 'gh_username',
             'name' => __( 'GitHub Username', 'edd-git' ),
