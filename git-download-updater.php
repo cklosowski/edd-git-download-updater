@@ -639,7 +639,7 @@ class EDD_GIT_Download_Updater {
         ?>
         <th class="" width="10%" ><?php _e( 'git URL', 'edd-git' );?></th>
         <th class="" width="5%"><?php _e( 'git Version', 'edd-git' );?></th>
-        <th class="" width="5%"><?php _e( 'Zip Foldername', 'edd-git' );?></th>
+        <th class="" width="5%"><?php _e( 'Zip Folder Name', 'edd-git' );?></th>
         <?php
     }
 
