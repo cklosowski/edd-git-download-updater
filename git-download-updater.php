@@ -439,7 +439,7 @@ class EDD_GIT_Download_Updater {
             return false;
         } else if ( $status_code != 200 ) {
             // Add an error
-            if ( $status_code == 404 ) {
+            if ( $status_code == 404 || $status_code == 500 ) {
                 if ( $try == 2 ) {
                     $error = '404';
                     $msg = __( 'Repo not found. Please check your URL and version.', 'edd-git' );
