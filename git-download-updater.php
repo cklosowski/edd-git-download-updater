@@ -221,7 +221,8 @@ class EDD_GIT_Download_Updater {
         // Setup our initial variables
         $this->includes();
         $this->set_version( $file );
-        $this->set_url( $file );
+        if ( ! $this->set_url( $file ) ) // If we bailed during the set_url function, stop processing update.
+            return false;
         $this->set_foldername( $file );
         $this->set_tmp_dir();
         $this->set_edd_dir();
@@ -362,10 +363,13 @@ class EDD_GIT_Download_Updater {
             $this->source = 'bitbucket';
         } else if ( 'github.com' == $tmp[2] ) {
             $access_token = isset ( $edd_settings['gh_access_token'] ) ? $edd_settings['gh_access_token'] : '';
-            if ( empty( $access_token ) ) {
+            if ( empty( $access_token ) ) { // If we don't have an oAuth access token, add error and bail.
+                // Add Error
                 $error = '404';
                 $msg = __( 'GitHub not authorized. Please visit the settings page.', 'edd-git' );
                 $this->errors[$this->file_key] = array( 'error' => $error, 'msg' => $msg );
+                // Bail
+                return false;
             } else {
                 $url = 'https://api.github.com/repos/' . $user . '/' . $repo . '/zipball/' . $v . $this->version . '?access_token=' . $access_token;
             }
@@ -441,19 +445,111 @@ class EDD_GIT_Download_Updater {
 
     public function fetch_zip( $file, $try = '' ) {
         $zip_path = $this->tmp_dir . $this->filename;
-        $response = wp_remote_get( $this->url, array( 'timeout' => 15000 ) );
 
-        $content_type = isset ( $response['headers']['content-type'] ) ? $response['headers']['content-type'] : '';
+        if ( 'bitbucket' == $this->source ) {
+            if ( ! defined( 'EDD_GIT_BB_USER' ) || ! defined( 'EDD_GIT_BB_PASSWORD' ) ) { // If BB credentials aren't set, add error and bail.
+                // Add Error
 
-        if ( 'application/zip' != $content_type )  {
-            $error = '404';
-            $msg = __( 'Repo not found. Please check your URL and version.', 'edd-git' );
-            $this->errors[$this->file_key] = array( 'error' => $error, 'msg' => $msg );
-            return false;
+                // Bail
+                return false;
+            }
+                
+            $username = EDD_GIT_BB_USER;
+            $password = EDD_GIT_BB_PASSWORD;
+
+            try {
+                $fp = fopen($zip_path, "w");
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $this->url);
+                curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+                curl_setopt($ch, CURLOPT_USERPWD, $username . ":" . $password);
+                curl_setopt($ch, CURLOPT_FILE, $fp);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+                $resp = curl_exec($ch);
+
+                // validate CURL status
+                if(curl_errno($ch))
+                    throw new Exception(curl_error($ch), 500);
+
+                // validate HTTP status code (user/password credential issues)
+                $status_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                if ($status_code != 200)
+                    throw new Exception("Response with Status Code [" . $status_code . "].", 500);
+            }
+            catch(Exception $ex) {
+                if ($ch != null) curl_close($ch);
+                if ($fp != null) fclose($fp);
+            }
+            if ( ! isset ( $status_code ) ) {
+                $this->errors['credentials'] = array( 'error' => '403', 'msg' => __( 'Cannot access repo. Please check your username and password.', 'edd-git' ) );
+                if ( file_exists( $zip_path ) )
+                    unlink( $zip_path );
+                return false;
+            } else if ( $status_code != 200 ) {
+                // Add an error
+                if ( $status_code == 404 || $status_code == 500 ) {
+                    if ( $try == 2 ) {
+                        $error = '404';
+                        $msg = __( 'Repo not found. Please check your URL and version.', 'edd-git' );
+                        $this->errors[$this->file_key] = array( 'error' => $error, 'msg' => $msg );
+                        return false;
+                    } else {
+                        $this->set_url( $file, '' );
+                        return $this->fetch_zip( $file, 2 );
+                    }
+
+                } else if ( $status_code == 403 ) {
+                    $error = '403';
+                    $msg = __( 'Cannot access repo. Please check your username and password.', 'edd-git' );
+                    $this->errors['credentials'] = array( 'error' => $error, 'msg' => $msg );
+                    return false;
+                } else {
+                    $error = '403';
+                    $msg = __( 'Cannot access repo. Please check your username and password.', 'edd-git' );
+                    $this->errors['credentials'] = array( 'error' => $error, 'msg' => $msg );
+                }
+
+                if ( file_exists( $zip_path ) )
+                    unlink( $zip_path );
+                return false;
+            } else {
+                if ($ch != null) curl_close($ch);
+                if ($fp != null) fclose($fp);
+            }
+        } else {
+            $edd_settings = get_option( 'edd_settings' );
+            $gh_access_token = isset ( $edd_settings['edd_settings'] ) ? $edd_settings['edd_settings'] : '';
+
+            if ( empty ( $gh_access_token ) ) { // If we don't have a GitHub oAuth access token, add error and bail.
+                // Add Error
+
+                // Bail
+                return false;
+            }
+
+            $response = wp_remote_get( $this->url, array( 'timeout' => 15000 ) );
+            $content_type = isset ( $response['headers']['content-type'] ) ? $response['headers']['content-type'] : '';
+
+            if ( 'application/zip' != $content_type )  {
+                if ( 2 == $try ) { // If we've tried to get the tag with and without a "v", add error and bail.
+                    // Add error
+                    $error = '404';
+                    $msg = __( 'Repo not found. Please check your URL and version.', 'edd-git' );
+                    $this->errors[$this->file_key] = array( 'error' => $error, 'msg' => $msg );
+                    // Bail
+                    return false;                    
+                } else { // We've tried to get the tag with a "v", try again without it.
+                    $this->set_url( $file, '' );
+                    return $this->fetch_zip( $file, 2 );
+                }
+
+            }
+
+            $fp = fopen( $zip_path, 'w' );
+            fwrite( $fp, $response['body'] );
         }
-
-        $fp = fopen( $zip_path, 'w' );
-        fwrite( $fp, $response['body'] );
 
         do_action( 'edd_git_zip_fetched', $zip_path, $this->git_repo );
 
