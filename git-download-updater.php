@@ -105,6 +105,11 @@ class EDD_GIT_Download_Updater {
         if ( ! class_exists('ZipArchive') )
             return false;
 
+        $settings_url = admin_url( 'edit.php?post_type=download&page=edd-settings&tab=misc' );
+        // Set our error messages;
+        $this->gh_error_msg = __( 'Failed: Not connected to GitHub. Please visit the <a href="' . $settings_url . '">EDD Settings</a> page to connect.', 'edd-git' );
+        $this->bb_error_msg = __( 'Failed: No BitBucket credentials found. Please add EDD_GIT_BB_USER and EDD_GIT_BB_PASSWORD to your wp-config.php file.', 'edd-git' );
+
         // Add our settings to the EDD Misc tab
         add_filter( 'edd_settings_misc', array( $this, 'edd_misc_settings' ) );
 
@@ -114,6 +119,9 @@ class EDD_GIT_Download_Updater {
 
         // Do something when a post is saved
         add_action( 'save_post', array( $this, 'save_post' ), 999 );
+
+        // Add our admin notice action
+        add_action( 'admin_notices', array( $this, 'admin_notices' ) );
 
         /* GitHub */
 
@@ -189,12 +197,6 @@ class EDD_GIT_Download_Updater {
 
         // OK, we're authenticated: we need to find and save the data
         $this->download_id = $post_id;
-        if ( isset ( $_POST['edd_git_username'] ) ) {
-            update_post_meta( $this->download_id, 'edd_git_username', $_POST['edd_git_username'] );
-        }
-        if ( isset ( $_POST['edd_git_password'] ) ) {
-            update_post_meta( $this->download_id, 'edd_git_password', $_POST['edd_git_password'] );
-        }
 
         $files = get_post_meta( $this->download_id, 'edd_download_files', true );
         if ( is_array( $files ) ) {
@@ -293,7 +295,7 @@ class EDD_GIT_Download_Updater {
 
     private function update_files( $new_zip ) {
         $files = get_post_meta( $this->download_id, 'edd_download_files', true );
-       $files[$this->file_key]['file'] = $new_zip;
+        $files[$this->file_key]['file'] = $new_zip;
         update_post_meta( $this->download_id, 'edd_download_files', $files );
     }
 
@@ -351,7 +353,9 @@ class EDD_GIT_Download_Updater {
             // Throw an error
             $error = '404';
             $msg = __( 'Repo not found. Please check your URL and version.', 'edd-git' );
-            $this->errors[$this->file_key] = array( 'error' => $error, 'msg' => $msg );
+            $this->errors[ 'admin_notices' ][] = $msg;
+            $this->errors[ $this->file_key ] = array( 'error' => $error, 'msg' => $msg );
+            return false;
         }
 
         $url = trailingslashit( $this->url );
@@ -364,20 +368,21 @@ class EDD_GIT_Download_Updater {
         if ( 'bitbucket.org' == $tmp[2] ) {
             // Add an error and bail if our BB user and password aren't set
             if ( ! defined( 'EDD_GIT_BB_USER' ) || ! defined( 'EDD_GIT_BB_PASSWORD' ) ) {
-                // Add error
-
+                // Add errors
+                $this->errors['admin_notices'][] = $this->bb_error_msg;
+                $this->errors[ $this->file_key ] = array( 'error' => '404', 'msg' => $this->bb_error_msg );
                 // Bail
                 return false;
             }
             $url_part = 'get/' . $v . $this->version .'.zip';
+            $url .= $url_part;
             $this->source = 'bitbucket';
         } else if ( 'github.com' == $tmp[2] ) {
             $access_token = isset ( $edd_settings['gh_access_token'] ) ? $edd_settings['gh_access_token'] : '';
             if ( empty( $access_token ) ) { // If we don't have an oAuth access token, add error and bail.
                 // Add Error
-                $error = '404';
-                $msg = __( 'GitHub not authorized. Please visit the settings page.', 'edd-git' );
-                $this->errors[$this->file_key] = array( 'error' => $error, 'msg' => $msg );
+                $this->errors['admin_notices'][] = $this->gh_error_msg;
+                $this->errors[ $this->file_key ] = array( 'error' => '404', 'msg' => $this->gh_error_msg );
                 // Bail
                 return false;
             } else {
@@ -388,7 +393,8 @@ class EDD_GIT_Download_Updater {
             // Throw an error
             $error = '404';
             $msg = __( 'Repo not found. Please check your URL and version.', 'edd-git' );
-            $this->errors[$this->file_key] = array( 'error' => $error, 'msg' => $msg );
+            $this->errors['admin_notices'][] = $msg;
+            $this->errors[ $this->file_key ] = array( 'error' => $error, 'msg' => $msg );
             // Bail
             return false;
         }
@@ -460,8 +466,9 @@ class EDD_GIT_Download_Updater {
 
         if ( 'bitbucket' == $this->source ) {
             if ( ! defined( 'EDD_GIT_BB_USER' ) || ! defined( 'EDD_GIT_BB_PASSWORD' ) ) { // If BB credentials aren't set, add error and bail.
-                // Add Error
-
+                // Add Errors
+                $this->errors['admin_notices'][] = $this->bb_error_msg;
+                $this->errors[ $this->file_key ] = array( 'error' => '404', 'msg' => $this->bb_error_msg );
                 // Bail
                 return false;
             }
@@ -469,8 +476,19 @@ class EDD_GIT_Download_Updater {
             $username = EDD_GIT_BB_USER;
             $password = EDD_GIT_BB_PASSWORD;
 
+            $fp = fopen($zip_path, "w");
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $this->url);
+            curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+            curl_setopt($ch, CURLOPT_USERPWD, $username . ":" . $password);
+            curl_setopt($ch, CURLOPT_FILE, $fp);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            $resp = curl_exec($ch);
+
             try {
-                $fp = fopen( $zip_path, "w" );
+                $fp = fopen($zip_path, "w");
                 $ch = curl_init();
                 curl_setopt($ch, CURLOPT_URL, $this->url);
                 curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
@@ -490,16 +508,12 @@ class EDD_GIT_Download_Updater {
                 if ($status_code != 200)
                     throw new Exception("Response with Status Code [" . $status_code . "].", 500);
             }
-
             catch(Exception $ex) {
                 if ($ch != null) curl_close($ch);
                 if ($fp != null) fclose($fp);
             }
-            echo $status_code;
-            die();            
             if ( ! isset ( $status_code ) ) {
-                $this->errors['credentials'] = array( 'error' => '403', 'msg' => __( 'Cannot access repo. Please check your username and password.', 'edd-git' ) );
-                if ( file_exists( $zip_path ) )
+               if ( file_exists( $zip_path ) )
                     unlink( $zip_path );
                 return false;
             } else if ( $status_code != 200 ) {
@@ -508,8 +522,8 @@ class EDD_GIT_Download_Updater {
                     if ( $try == 2 ) {
                         $error = '404';
                         $msg = __( 'Repo not found. Please check your URL and version.', 'edd-git' );
-                        $this->errors[$this->file_key] = array( 'error' => $error, 'msg' => $msg );
-                        return false;
+                        $this->errors['admin_notices'][] = $msg;
+                        $this->errors[ $this->file_key ] = array( 'error' => $error, 'msg' => $msg );
                     } else {
                         $this->set_url( $file, '' );
                         return $this->fetch_zip( $file, 2 );
@@ -517,13 +531,13 @@ class EDD_GIT_Download_Updater {
 
                 } else if ( $status_code == 403 ) {
                     $error = '403';
-                    $msg = __( 'Cannot access repo. Please check your username and password.', 'edd-git' );
-                    $this->errors['credentials'] = array( 'error' => $error, 'msg' => $msg );
+                    $msg = __( 'Cannot access repo. Please check your connection.', 'edd-git' );
+                    $this->errors['admin_notices'][] = $msg;
                     return false;
                 } else {
                     $error = '403';
                     $msg = __( 'Cannot access repo. Please check your username and password.', 'edd-git' );
-                    $this->errors['credentials'] = array( 'error' => $error, 'msg' => $msg );
+                    $this->errors['admin_notices'] = $msg;
                 }
 
                 if ( file_exists( $zip_path ) )
@@ -535,11 +549,12 @@ class EDD_GIT_Download_Updater {
             }
         } else {
             $edd_settings = get_option( 'edd_settings' );
-            $gh_access_token = isset ( $edd_settings['edd_settings'] ) ? $edd_settings['edd_settings'] : '';
+            $gh_access_token = isset ( $edd_settings['gh_access_token'] ) ? $edd_settings['gh_access_token'] : '';
 
             if ( empty ( $gh_access_token ) ) { // If we don't have a GitHub oAuth access token, add error and bail.
-                // Add Error
-
+                // Add Errors
+                $this->errors['admin_notices'][] = $this->gh_error_msg;
+                $this->errors[ $this->file_key ] = array( 'error' => '404', 'msg' => $this->gh_error_msg );
                 // Bail
                 return false;
             }
@@ -551,8 +566,9 @@ class EDD_GIT_Download_Updater {
                 if ( 2 == $try ) { // If we've tried to get the tag with and without a "v", add error and bail.
                     // Add error
                     $error = '404';
-                    $msg = __( 'Repo not found. Please check your URL and version.', 'edd-git' );
-                    $this->errors[$this->file_key] = array( 'error' => $error, 'msg' => $msg );
+                    $msg = __( 'Failed: Repo not found. Please check your URL and version.', 'edd-git' );
+                    $this->errors[ 'admin_notices' ][] = $msg;
+                    $this->errors[ $this->file_key ] = array( 'error' => $error, 'msg' => $msg );
                     // Bail
                     return false;                    
                 } else { // We've tried to get the tag with a "v", try again without it.
@@ -717,6 +733,7 @@ class EDD_GIT_Download_Updater {
 
     public function edd_metabox_td( $post_id, $key, $args ) {
         $files = get_post_meta( $post_id, 'edd_download_files', true );
+        $errors = get_post_meta( $post_id, 'edd_git_errors', true );
 
         if ( isset ( $files[$key]['git_url'] ) ) {
             $git_url = $files[$key]['git_url'];
@@ -747,8 +764,8 @@ class EDD_GIT_Download_Updater {
             <input type="text" placeholder="<?php _e( 'git URL', 'edd-git' );?>" name="edd_download_files[<?php echo $key; ?>][git_url]" value="<?php echo $git_url;?>">
             <br />
             <?php
-            if ( isset ( $this->errors[$key] ) and $this->errors[$key]['error'] == 404 ) {
-                echo '<div style="color: red">' . $this->errors[$key]['msg'] . '</div>';
+            if ( isset ( $errors[$key] ) and $errors[$key]['error'] == 404 ) {
+                echo '<div style="color: red">' . $errors[$key]['msg'] . '</div>';
             }
             ?>
         </td>
@@ -756,8 +773,8 @@ class EDD_GIT_Download_Updater {
             <input type="text" placeholder="<?php echo $version_placeholder;?>" name="edd_download_files[<?php echo $key; ?>][git_version]" value="<?php echo $git_version;?>" style="width: 70px; padding: 3px 6px;">
             <br />
             <?php
-            if ( isset ( $this->errors[$key] ) and $this->errors[$key]['error'] == 404 ) {
-                echo '<div style="color: red">' . $this->errors[$key]['msg'] . '</div>';
+            if ( isset ( $errors[$key] ) and $errors[$key]['error'] == 404 ) {
+                echo '<div style="color: red">' . $errors[$key]['msg'] . '</div>';
             }
             ?>
         </td>
@@ -765,46 +782,6 @@ class EDD_GIT_Download_Updater {
             <input type="text" placeholder="<?php _e( 'Default: Repo Name' ); ?>" name="edd_download_files[<?php echo $key; ?>][zip_foldername]" value="<?php echo $zip_foldername;?>">
         </td>
     <?php
-    }
-
-    /*
-     * Add our username and password settings to the download metabox.
-     *
-     * @since 1.0
-     * return void
-     */
-
-    public function edd_metabox_settings( $post_id ) {
-        // Add our errors if they exist
-        $this->errors = get_post_meta( $post_id, 'edd_git_errors', true );
-        delete_post_meta( $post_id, 'edd_git_errors' );
-
-        $git_username = get_post_meta( $post_id, 'edd_git_username', true );
-        $git_password = get_post_meta( $post_id, 'edd_git_password', true );
-
-        ?>
-        <p>
-            <strong><?php _e( 'Git Repo Credentials:', 'edd-git' ); ?></strong>
-        </p>
-        <p>
-            <label>
-            <?php _e( 'Username', 'edd-git' ); ?>
-            <input type="text" placeholder="<?php _e( 'Optional', 'edd-git' );?>" name="edd_git_username" value="<?php echo $git_username;?>">
-            </label>
-        </p>
-        <p>
-            <label>
-            <?php _e( 'Password', 'edd-git' ); ?>
-            <input type="password" placeholder="<?php _e( 'Optional', 'edd-git' );?>" name="edd_git_password" value="<?php echo $git_password;?>">
-            </label>
-            <br />
-            <?php
-            if ( isset ( $this->errors['credentials'] ) and $this->errors['credentials']['error'] == 403 ) {
-                echo '<div style="color: red">' . $this->errors['credentials']['msg'] . '</div>';
-            }
-            ?>
-        </p>
-        <?php
     }
 
     /*
@@ -1040,6 +1017,29 @@ class EDD_GIT_Download_Updater {
         }
 
         echo $html;
+    }
+
+    /*
+     * Display admin error notices
+     *
+     * @since 1.1
+     * @return void
+     */
+
+    public function admin_notices() {
+        global $post, $typenow;
+
+        // Bail if we aren't editing a download.
+        if ( ! isset ( $_REQUEST['post'] ) || empty ( $_REQUEST['post'] ) || 'download' != $typenow )
+            return false;
+
+        $errors = get_post_meta( $post->ID, 'edd_git_errors', true );
+
+        if ( isset ( $errors['admin_notices'] ) ) {
+            foreach( $errors['admin_notices'] as $msg ) {
+                echo '<div class="error"><p>' . $msg . '</p></div>';
+            }
+        }
     }
 
 } // End EDD_GIT_Download_Updater class
