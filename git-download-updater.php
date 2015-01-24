@@ -221,8 +221,10 @@ class EDD_GIT_Download_Updater {
         // Setup our initial variables
         $this->includes();
         $this->set_version( $file );
+
         if ( ! $this->set_url( $file ) ) // If we bailed during the set_url function, stop processing update.
             return false;
+
         $this->set_foldername( $file );
         $this->set_tmp_dir();
         $this->set_edd_dir();
@@ -230,7 +232,7 @@ class EDD_GIT_Download_Updater {
 
         // Grab our zip file.
         $zip_path = $this->fetch_zip( $file );
-        if ( ! $zip_path )
+        if ( ! $zip_path ) // If we bailed during the fetch_zip function, stop processing update.
             return false;
 
         // Unzip our file to a new temporary directory.
@@ -360,6 +362,14 @@ class EDD_GIT_Download_Updater {
         $repo = $tmp[4];
 
         if ( 'bitbucket.org' == $tmp[2] ) {
+            // Add an error and bail if our BB user and password aren't set
+            if ( ! defined( 'EDD_GIT_BB_USER' ) || ! defined( 'EDD_GIT_BB_PASSWORD' ) ) {
+                // Add error
+
+                // Bail
+                return false;
+            }
+            $url_part = 'get/' . $v . $this->version .'.zip';
             $this->source = 'bitbucket';
         } else if ( 'github.com' == $tmp[2] ) {
             $access_token = isset ( $edd_settings['gh_access_token'] ) ? $edd_settings['gh_access_token'] : '';
@@ -379,12 +389,14 @@ class EDD_GIT_Download_Updater {
             $error = '404';
             $msg = __( 'Repo not found. Please check your URL and version.', 'edd-git' );
             $this->errors[$this->file_key] = array( 'error' => $error, 'msg' => $msg );
+            // Bail
+            return false;
         }
 
         $this->git_repo = $tmp[4];
 
         $this->url = apply_filters( 'edd_git_repo_url', $url );
-
+        return $this->url;
     }
 
     /*
@@ -453,12 +465,12 @@ class EDD_GIT_Download_Updater {
                 // Bail
                 return false;
             }
-                
+ 
             $username = EDD_GIT_BB_USER;
             $password = EDD_GIT_BB_PASSWORD;
 
             try {
-                $fp = fopen($zip_path, "w");
+                $fp = fopen( $zip_path, "w" );
                 $ch = curl_init();
                 curl_setopt($ch, CURLOPT_URL, $this->url);
                 curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
@@ -478,10 +490,13 @@ class EDD_GIT_Download_Updater {
                 if ($status_code != 200)
                     throw new Exception("Response with Status Code [" . $status_code . "].", 500);
             }
+
             catch(Exception $ex) {
                 if ($ch != null) curl_close($ch);
                 if ($fp != null) fclose($fp);
             }
+            echo $status_code;
+            die();            
             if ( ! isset ( $status_code ) ) {
                 $this->errors['credentials'] = array( 'error' => '403', 'msg' => __( 'Cannot access repo. Please check your username and password.', 'edd-git' ) );
                 if ( file_exists( $zip_path ) )
