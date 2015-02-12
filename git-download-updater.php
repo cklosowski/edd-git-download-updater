@@ -201,7 +201,7 @@ class EDD_GIT_Download_Updater {
         $files = get_post_meta( $this->download_id, 'edd_download_files', true );
         if ( is_array( $files ) ) {
             foreach( $files as $key => $file ) {
-                if ( isset ( $file['git_url'] ) and ! empty( $file['git_url'] ) ) {
+                if ( ! empty( $file['git_url'] ) ) {
                     $this->file_key = $key;
                     $this->update_download( $file );
                 }
@@ -347,7 +347,7 @@ class EDD_GIT_Download_Updater {
     private function set_url( $file, $v = 'v' ) {
         $edd_settings = get_option( 'edd_settings' );
 
-        if ( isset ( $file['git_url'] ) and ! empty( $file['git_url'] ) ) {
+        if ( ! empty( $file['git_url'] ) ) {
             $this->url = $file['git_url'];
         } else {
             // Throw an error
@@ -413,7 +413,7 @@ class EDD_GIT_Download_Updater {
      */
 
     private function set_version( $file ) {
-        if ( isset ( $file['git_version'] ) and ! empty( $file['git_version'] ) ) {
+        if ( ! empty( $file['git_version'] ) ) {
             $this->version = $file['git_version'];
         } else {
             $sl_version = get_post_meta( $this->download_id, '_edd_sl_version', true );
@@ -429,7 +429,7 @@ class EDD_GIT_Download_Updater {
      */
 
     private function set_filename( $file ) {
-        if ( isset ( $file['name'] ) and ! empty( $file['name'] ) ) {
+        if ( ! empty( $file['name'] ) ) {
             $this->filename = $file['name'] . '.zip';
         } else {
             $this->filename = $this->git_repo . '.' . $this->version . '.zip';
