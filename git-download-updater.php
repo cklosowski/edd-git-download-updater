@@ -472,6 +472,14 @@ class EDD_GIT_Download_Updater {
                 // Bail
                 return false;
             }
+
+            if ( ! function_exists( 'curl_version' ) ) {
+                // Add Errors
+                $this->errors['admin_notices'][] = __( 'cURL is not enabled. Please contact your host.');
+                $this->errors[ $this->file_key ] = array( 'error' => '404', 'msg' => __( 'cURL is not enabled. Please contact your host.') );
+                // Bail
+                return false;
+            }
  
             $username = EDD_GIT_BB_USER;
             $password = EDD_GIT_BB_PASSWORD;
