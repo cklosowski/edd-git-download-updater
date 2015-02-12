@@ -279,7 +279,7 @@ class EDD_GIT_Download_Updater {
             $content = $Parser->parse_readme( trailingslashit( $new_dir ) . 'readme.txt' );
 
             if ( isset ( $content['sections']['changelog'] ) ) {
-                $changelog = $content['sections']['changelog'];
+                $changelog = esc_html( $content['sections']['changelog'] );
                 update_post_meta( $this->download_id, '_edd_sl_changelog', $changelog );
             }
         }
