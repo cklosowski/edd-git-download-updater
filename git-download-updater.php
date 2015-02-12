@@ -105,13 +105,13 @@ class EDD_GIT_Download_Updater {
         if ( ! class_exists('ZipArchive') )
             return false;
 
-        $settings_url = admin_url( 'edit.php?post_type=download&page=edd-settings&tab=misc' );
+        $settings_url = admin_url( 'edit.php?post_type=download&page=edd-settings&tab=extensions' );
         // Set our error messages;
         $this->gh_error_msg = __( 'Failed: Not connected to GitHub. Please visit the <a href="' . $settings_url . '">EDD Settings</a> page to connect.', 'edd-git' );
         $this->bb_error_msg = __( 'Failed: No BitBucket credentials found. Please add EDD_GIT_BB_USER and EDD_GIT_BB_PASSWORD to your wp-config.php file.', 'edd-git' );
 
-        // Add our settings to the EDD Misc tab
-        add_filter( 'edd_settings_misc', array( $this, 'edd_misc_settings' ) );
+        // Add our settings to the EDD Extensions tab
+        add_filter( 'edd_settings_extensions', array( $this, 'edd_extensions_settings' ) );
 
         // Add our settings to the download editor.
         add_action( 'edd_download_file_table_head', array( $this, 'edd_metabox_th' ), 11 );
@@ -796,12 +796,12 @@ class EDD_GIT_Download_Updater {
      * Add our default git settings to the Misc. tab
      *
      * @since 1.0
-     * @return array $misc
+     * @return array $extensions
      */
 
-    public function edd_misc_settings( $misc ) {
+    public function edd_extensions_settings( $extensions ) {
 
-        $misc['gh_begin'] = array(
+        $extensions['gh_begin'] = array(
             'id'    => 'gh_begin',
             'name'  => __( 'GitHub Updater', 'edd-git' ),
             'desc'  => '',
@@ -809,42 +809,42 @@ class EDD_GIT_Download_Updater {
             'std'   => '',
         );
 
-        $misc['gh_desc'] = array(
+        $extensions['gh_desc'] = array(
             'id'    => 'git_gh_desc',
             'name'  => '',
             'desc'  => '',
             'type'  => 'hook',
             'std'   => '',
         );
-        $misc['gh_clientid'] = array(
+        $extensions['gh_clientid'] = array(
             'id'    => 'gh_clientid',
             'name'  => __( 'Client ID', 'edd-git' ),
             'desc'  => '',
             'type'  => 'text',
             'std'   => ''
         );
-        $misc['gh_clientsecret'] = array(
+        $extensions['gh_clientsecret'] = array(
             'id'    => 'gh_clientsecret',
             'name'  => __( 'Client Secret', 'edd-git' ),
             'desc'  => '',
             'type'  => 'text',
             'std'   => ''
         );        
-        $misc['gh_authorize_button'] = array(
+        $extensions['gh_authorize_button'] = array(
             'id'    => 'git_gh_authorize_button',
             'name'  => '',
             'desc'  => '',
             'type'  => 'hook',
             'std'   => ''
         );
-        $misc['bb_begin'] = array(
+        $extensions['bb_begin'] = array(
             'id'    => 'bb_begin',
             'name'  => __( 'BitBucket Updater', 'edd-git' ),
             'desc'  => '',
             'type'  => 'header',
             'std'   => '',
         );
-        $misc['bb_desc'] = array( 
+        $extensions['bb_desc'] = array( 
             'id'    => 'git_bb_desc',
             'name'  => '',
             'desc'  => '',
@@ -852,7 +852,7 @@ class EDD_GIT_Download_Updater {
             'std'   => '',
         );
 
-        return $misc;
+        return $extensions;
     }
 
     /*
@@ -973,7 +973,7 @@ class EDD_GIT_Download_Updater {
             $response = wp_remote_get( $query, array( 'sslverify' => false ) );
             parse_str( $response['body'] ); // populates $access_token, $token_type
 
-            $redirect = admin_url( 'edit.php?post_type=download&page=edd-settings&tab=misc' );
+            $redirect = admin_url( 'edit.php?post_type=download&page=edd-settings&tab=extensions' );
             if ( !empty( $access_token ) ) {
                 $edd_settings['gh_access_token'] = $access_token;
                 update_option( 'edd_settings', $edd_settings );
