@@ -272,7 +272,7 @@ class EDD_GIT_Download_Updater {
         $this->version = $version;
         $this->url = $repo_url;
         $this->repo_url = $repo_url;
-        $this->key = $key;
+        $this->file_key = $key;
         $this->original_filename = $file_name;
         $this->original_foldername = $folder_name;
 
@@ -832,6 +832,8 @@ class EDD_GIT_Download_Updater {
         }
 
         ?>
+
+        <input type="hidden" name="edd_download_files[<?php echo $key; ?>][attachment_id]" value="0">
         <input type="hidden" id="edd_git_file" name="edd_download_files[<?php echo $key; ?>][file]" value="<?php echo $args['file']; ?>">
 
         <td style="width: 20%">
@@ -866,7 +868,6 @@ class EDD_GIT_Download_Updater {
         </td>
 
         <td>
-            <input type="hidden" name="edd_download_files[<?php echo absint( $key ); ?>][attachment_id]" class="edd_repeatable_attachment_id_field" value="<?php echo esc_attr( absint( $args['attachment_id'] ) ); ?>"/>
             <?php echo EDD()->html->text( array(
                 'name'        => 'edd_download_files[' . $key . '][name]',
                 'value'       => $args['name'],
