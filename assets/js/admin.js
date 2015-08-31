@@ -272,7 +272,7 @@ jQuery( document ).ready( function ( $ ) {
 						that.currentTag = tag;
 						that.changeFetchStatus( 'clean' );
 						that.setUpgradeFile();
-						if ( 0 > $( '#edd_sl_version' ).length ) {
+						if ( 'checked' == $( '#edd_license_enabled' ).attr( 'checked' ) ) {
 							$( '#edd_sl_version' ).val( response.sl_version );
 							tinyMCE.get( 'edd_sl_changelog' ).setContent( response.changelog );						
 						}
