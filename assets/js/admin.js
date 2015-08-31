@@ -209,7 +209,6 @@ jQuery( document ).ready( function ( $ ) {
 					}
 
 					that.changeFetchStatus( status );
-
 				} );
 			},
 			changeFilenamePlaceholder: function( slug, tag ) {
@@ -264,17 +263,20 @@ jQuery( document ).ready( function ( $ ) {
 				var condition = $( '.git-condition' ).val();
 				var that = this;
 				$( '.git-update-spinner' ).show();
+				$( '.git-update-spinner' ).css( 'visibility', 'visible' );
 				$.post( ajaxurl, { action: 'edd_git_update_file', post_id: edd_vars.post_id, condition: condition, file_name: file_name, key:key, version: tag, folder_name: folder_name, repo_url: repo_url }, function( response ) {
 					$( '.git-update-spinner' ).hide();
 
 					if ( null == response.errors && 'object' == typeof response ) { // No errors
 						that.currentGitUrl = repo_url;
 						that.currentTag = tag;
-						$( '#edd_sl_version' ).val( response.sl_version );
-						tinyMCE.get( 'edd_sl_changelog' ).setContent( response.changelog );
-						$( '#edd_git_file' ).val( response.file );
 						that.changeFetchStatus( 'clean' );
 						that.setUpgradeFile();
+						if ( 0 > $( '#edd_sl_version' ).length ) {
+							$( '#edd_sl_version' ).val( response.sl_version );
+							tinyMCE.get( 'edd_sl_changelog' ).setContent( response.changelog );						
+						}
+						$( '#edd_git_file' ).val( response.file );	
 						$( document ).trigger( 'eddGitFileFetched' );
 					} else if ( 'undefined' != typeof response.errors ) { // We had an errors
 						$( '#edd_git_error' ).html( response.errors );
@@ -311,6 +313,7 @@ jQuery( document ).ready( function ( $ ) {
 			fetchRepos: function( e ) {
 				$( e.target ).hide();
 				$( e.target ).next( '.spinner' ).show();
+				$( e.target ).next( '.spinner' ).css( 'visibility', 'visible' );
 				var current_repo = $( '.git-repo' ).val();
 				$.post( ajaxurl, { action: 'edd_git_fetch_repos', current_repo: current_repo }, function( response ) {
 					var options = response.options_html;

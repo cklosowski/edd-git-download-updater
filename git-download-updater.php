@@ -224,9 +224,14 @@ class EDD_GIT_Download_Updater {
         global $pagenow, $post, $typenow;
 
         if ( ( 'edit.php' == $pagenow && isset ( $_REQUEST['page'] ) && 'edd-settings' == $_REQUEST['page'] && isset ( $_REQUEST['tab'] ) && 'extensions' == $_REQUEST['tab'] ) || 'download' == $typenow ) {
+            if ( is_object( $post ) ) {
+                $post_id = $post->ID;
+            } else {
+                $post_id = '';
+            }
             wp_enqueue_script( 'jquery-select2', EDD_GIT_PLUGIN_URL . 'assets/js/select2.min.js', array( 'jquery' ) );
             wp_enqueue_script( 'edd-git-updater', EDD_GIT_PLUGIN_URL . 'assets/js/admin.js', array( 'jquery' ) );
-            wp_localize_script( 'edd-git-updater', 'gitUpdater', array( 'pluginURL' => EDD_GIT_PLUGIN_URL, 'useGit' => get_post_meta( $post->ID, '_edd_download_use_git', true ), 'currentGitUrl' => $this->get_current_repo_url( $post->ID ), 'currentTag' => $this->get_current_tag( $post->ID ) ) );
+            wp_localize_script( 'edd-git-updater', 'gitUpdater', array( 'pluginURL' => EDD_GIT_PLUGIN_URL, 'useGit' => get_post_meta( $post_id, '_edd_download_use_git', true ), 'currentGitUrl' => $this->get_current_repo_url( $post_id ), 'currentTag' => $this->get_current_tag( $post_id ) ) );
         }
     }
 
@@ -863,7 +868,7 @@ class EDD_GIT_Download_Updater {
                 </select>
             </div>
             <div class="git-tag-spinner" style="display:none;">
-                <span class="spinner" style="display:block;float:left;margin-bottom:2px;margin-left:15px;"></span>
+                <span class="spinner" style="visibility:visible;display:block;float:left;margin-bottom:2px;margin-left:15px;"></span>
             </div>
         </td>
 
@@ -1083,6 +1088,8 @@ class EDD_GIT_Download_Updater {
      */
 
     public function edd_extensions_settings( $extensions ) {
+
+        $this->admin_js();
 
         $extensions['gh_begin'] = array(
             'id'    => 'gh_begin',
@@ -1319,7 +1326,7 @@ class EDD_GIT_Download_Updater {
         $get_tags = wp_remote_get( $tag_url, array( 'sslverify' => false ) );
         $tags = json_decode( wp_remote_retrieve_body( $get_tags ), true );
         $return_tags = array();
-        if ( is_array ( $tags ) ) {
+        if ( is_array ( $tags ) && ! isset ( $tags['message'] ) ) {
             foreach ( $tags as $tag ) {
                 // var_dump( $tag );
                 $return_tags[] = $tag['name'];
