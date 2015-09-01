@@ -3,7 +3,7 @@
 Plugin Name: Easy Digital Downloads - Git Update Downloads
 Plugin URI: http://ninjaforms.com
 Description: Update Download files and changelog directly from BitBucket or GitHub
-Version: 1.1
+Version: 1.0
 Author: The WP Ninjas
 Author URI: http://wpninjas.com
 */
