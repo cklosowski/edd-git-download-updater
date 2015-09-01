@@ -424,7 +424,7 @@ class EDD_GIT_Download_Updater_Admin
         </td>
 
         <td>
-            <a href="#" class="edd-git-fetch-repos"><span class="dashicons dashicons-update"></span><span class="spinner" style="margin-left: -1px; float:left"></a>
+            <a href="#" class="edd-git-fetch-repos"><span class="dashicons dashicons-update"></span><span class="spinner" style="margin-left: -1px; float:left; display:none;"></a>
         </td>
 
         <td>
