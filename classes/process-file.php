@@ -106,7 +106,7 @@ class EDD_GIT_Download_Updater_Process_File
         $files[ $this->instance->file_key ]['git_version']        = $this->instance->version;
         $files[ $this->instance->file_key ]['git_url']            = $this->instance->repo_url;
         $files[ $this->instance->file_key ]['git_folder_name']    = $this->instance->original_foldername;
-        $files[ $this->instance->file_key ]['name']               = $this->instance->original_filename;
+        $files[ $this->instance->file_key ]['name']               = $this->instance->file_name;
         $files[ $this->instance->file_key ]['file']               = $new_zip;
         $files[ $this->instance->file_key ]['condition']          = $this->instance->condition;
         $files[ $this->instance->file_key ]['attachment_id']      = 0;

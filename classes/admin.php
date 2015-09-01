@@ -325,7 +325,7 @@ class EDD_GIT_Download_Updater_Admin
                                 <th style="width: 20%"><?php _e( 'File Name', 'edd-git' ); ?></th>
                                 <th style="width: 20%"><?php _e( 'Plugin Folder Name', 'edd-git' ); ?></th>
                                 <th style="width: 10%"></th>
-                                <th class="pricing" style="width: 20%; <?php echo $variable_display; ?>"><?php _e( 'Price Assignment', 'edd-git' ); ?></th>
+                                <th class="pricing" style="width: 10%; <?php echo $variable_display; ?>"><?php _e( 'Price Assignment', 'edd-git' ); ?></th>
                                 <?php do_action( 'edd_download_file_table_head', $post_id ); ?>
                                 <th style="width: 2%"></th>
                             </tr>
@@ -445,9 +445,21 @@ class EDD_GIT_Download_Updater_Admin
         </td>
 
         <td>
-            <?php echo EDD()->html->text( array(
+            <?php 
+                $tmp = explode( '/', $args['git_url'] );
+                $git_repo = $tmp[4];
+                $tag = $args['git_version'];
+                $default_name = $git_repo. '-' . $tag . '.zip';
+
+                if ( $args['name'] == $default_name ) {
+                    $name = '';
+                } else {
+                    $name = $args['name'];
+                }
+
+                echo EDD()->html->text( array(
                 'name'        => 'edd_download_files[' . $key . '][name]',
-                'value'       => $args['name'],
+                'value'       => $name,
                 'placeholder' => $default_file_name,
                 'class'       => 'edd_repeatable_name_field large-text git-file-name'
             ) ); ?>
@@ -477,11 +489,11 @@ class EDD_GIT_Download_Updater_Admin
         <td>
             <div class="edd_repeatable_upload_field_container">
                 <a href="#" class="button-secondary edd-git-update" style="float:left"><span class="git-update-text" <?php echo $text_style; ?>><?php _e( 'Fetch', 'edd-git' ); ?></span><span class="dashicons dashicons-yes git-update-check" <?php echo $check_style; ?>></span><span class="dashicons dashicons-no-alt git-update-none" style="margin-top:3px;display:none;"></span></a>
-                <span class="spinner git-update-spinner" style="float:left;margin-top:5px;"></span> 
+                <span class="spinner git-update-spinner" style="float:left;margin-top:5px;display:none;"></span> 
             </div>
         </td>
 
-        <td class="pricing"<?php echo $variable_display; ?>>
+        <td class="pricing"<?php echo $variable_display; ?> width="10%">
             <?php
                 $options = array();
 
