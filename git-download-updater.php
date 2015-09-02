@@ -16,6 +16,10 @@ if ( ! defined( 'EDD_GIT_PLUGIN_URL' ) ) {
     define( 'EDD_GIT_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 }
 
+if ( ! defined( 'EDD_GIT_VERSION' ) ) {
+    define( 'EDD_GIT_VERSION', '1.0' );
+}
+
 class EDD_GIT_Download_Updater {
 
     /*
@@ -125,6 +129,10 @@ class EDD_GIT_Download_Updater {
         // Include our repo interaction class.
         require_once( EDD_GIT_PLUGIN_DIR . 'classes/repos.php' );
         $this->repos = new EDD_GIT_Download_Updater_Repos( $this );
+
+        if ( class_exists( 'EDD_License' ) ) {
+            $license = new EDD_License( __FILE__, 'Git Download Updater', EDD_GIT_VERSION, 'WP Ninjas' );
+        }
     }
 
 } // End EDD_GIT_Download_Updater class
