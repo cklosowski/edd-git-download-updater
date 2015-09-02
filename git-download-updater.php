@@ -21,82 +21,82 @@ class EDD_GIT_Download_Updater {
     /*
      * Store our git Username. This will be used to login to the desired repo.
      */
-    var $username;
+    public $username;
 
     /*
      * Store our git Password. This wil be used to login to the desired repo.
      */
-    var $password;
+    public $password;
 
     /*
      * Store our git repo name
      */
-    var $git_repo;
+    public $git_repo;
 
     /*
      * Store our desired version #.
      */
-    var $version;
+    public $version;
 
     /*
      * Store our download's "version" number if Licensing is installed
      */
-    var $sl_version;
+    public $sl_version;
 
     /*
      * Store our git Repo URL
      */
-    var $url;
+    public $url;
 
     /*
      * Store our destination filename
      */
-    var $file_name;
+    public $file_name;
 
     /*
      * Store our temporary dir name
      */
-    var $tmp_dir;
+    public $tmp_dir;
 
     /*
      * Store our newly unzipped folder name
      */
-    var $sub_dir;
+    public $sub_dir;
 
     /*
      * Store the id of the download we're updating
      */
-    var $download_id;
+    public $download_id;
 
     /*
      * Store our EDD upload dir information
      */
-    var $edd_dir;
+    public $edd_dir;
 
     /*
      * Store the current file key for our download
      */
-    var $file_key;
+    public $file_key;
 
     /*
      * Store our errors
      */
-    var $errors;
+    public $errors;
 
     /*
      * Store our folder name
      */
-    var $folder_name;
+    public $folder_name;
 
     /*
      * Store our source (either bitbucket or github)
      */
-    var $source;
+    public $source;
 
     /*
      * Store our changelog
      */
-    var $changelog = '';
+    public $changelog = '';
 
     /*
      * Get things up and running.
