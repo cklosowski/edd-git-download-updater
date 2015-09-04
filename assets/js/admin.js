@@ -274,7 +274,9 @@ jQuery( document ).ready( function ( $ ) {
 						that.setUpgradeFile();
 						if ( 'checked' == $( '#edd_license_enabled' ).attr( 'checked' ) ) {
 							$( '#edd_sl_version' ).val( response.sl_version );
-							tinyMCE.get( 'edd_sl_changelog' ).setContent( response.changelog );						
+							if ( response.changelog ) {	
+								tinyMCE.get( 'edd_sl_changelog' ).setContent( response.changelog );
+							}
 						}
 						$( '#edd_git_file' ).val( response.file );	
 						$( document ).trigger( 'eddGitFileFetched' );
